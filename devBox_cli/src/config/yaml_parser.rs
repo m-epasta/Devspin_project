@@ -15,7 +15,7 @@ pub struct ProjectConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Commands {
-    start: StartCommands
+    pub start: StartCommands
     // add other later
 }
 
