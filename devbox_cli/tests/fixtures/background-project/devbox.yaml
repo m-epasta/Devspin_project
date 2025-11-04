@@ -1,0 +1,36 @@
+name: "background-project"
+description: "Test project for background mode"
+
+commands:
+  start:
+    dev: "sleep 5 && echo 'Long running process finished'"  # Simulates background process
+    test: "echo 'Running background tests'"
+    build: "echo 'Building background project'"
+
+services:
+  services:
+    - name: "frontend"
+      service_type: "web"
+      command: "sleep 10 && echo 'Frontend started'"  # Long process for background test
+      working_dir: "./frontend"
+      dependencies: []
+    
+    - name: "api"
+      service_type: "api"
+      command: "sleep 8 && echo 'API started'"  # Long process
+      working_dir: "./api" 
+      dependencies: ["frontend"]
+    
+    - name: "database"
+      service_type: "database"
+      command: "sleep 3 && echo 'Database started'"
+      working_dir: "./db"
+      dependencies: []
+
+environment:
+  BACKGROUND_MODE: "true"
+  TIMEOUT: "30"
+
+hooks:
+  pre_start: "echo 'Starting in background mode'"
+  post_start: "echo 'Background services launched'"

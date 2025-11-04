@@ -1,0 +1,30 @@
+name: "test-project"
+description: "Test project for command tests"
+
+commands:
+  start:
+    dev: "echo 'Starting development server'"
+    test: "echo 'Running tests'"
+    build: "echo 'Building project'"
+
+services:
+  services:
+    - name: "frontend"
+      service_type: "web"
+      command: "echo 'Starting frontend on port 3000'"
+      working_dir: "./frontend"
+      dependencies: []
+    
+    - name: "api"
+      service_type: "api"
+      command: "echo 'Starting API on port 8000'"
+      working_dir: "./api"
+      dependencies: ["frontend"]
+
+environment:
+  NODE_ENV: "test"
+  API_URL: "http://localhost:8000"
+
+hooks:
+  pre_start: "echo 'Preparing test environment'"
+  post_start: "echo 'Test environment ready'"

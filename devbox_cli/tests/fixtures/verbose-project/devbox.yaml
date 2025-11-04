@@ -1,0 +1,51 @@
+name: "verbose-project"
+description: "Test project for verbose output"
+
+commands:
+  start:
+    dev: "npm run dev --verbose"
+    test: "npm test --verbose"
+    build: "npm run build --verbose"
+    clean: "rm -rf node_modules dist"
+
+services:  # ← Remove the extra "services:" line below this
+  - name: "frontend"
+    service_type: "web"
+    command: "npm start --verbose"
+    working_dir: "./packages/frontend"
+    health_check:
+      type_entry: "http"
+      port: 3000
+      http_target: "http://localhost:3000/health"
+    dependencies: []
+  
+  - name: "backend"
+    service_type: "api"
+    command: "node server.js --debug"
+    working_dir: "./packages/backend"
+    health_check:
+      type_entry: "http" 
+      port: 8080
+      http_target: "http://localhost:8080/health"
+    dependencies: ["database"]
+  
+  - name: "database"
+    service_type: "database"
+    command: "docker run postgres -v"
+    working_dir: "./infra"
+    health_check:
+      type_entry: "port"
+      port: 5432
+      http_target: ""
+    dependencies: []
+
+environment:
+  LOG_LEVEL: "debug"
+  DEBUG: "true"
+  VERBOSE: "1"
+
+hooks:
+  pre_start: "npm install && echo 'Installing dependencies'"
+  post_start: "echo 'All services started in verbose mode'"
+  pre_stop: "echo 'Stopping verbose services'"
+  post_stop: "echo 'Cleanup complete'"

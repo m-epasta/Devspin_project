@@ -9,6 +9,7 @@ pub struct ProjectConfig {
     pub name: String,
     pub description: Option<String>,
     pub commands: Commands,
+    pub services: Option<Vec<Service>>,
     pub environment: Option<HashMap<String, String>>,
     pub hooks: Option<Hooks>
 }
@@ -40,12 +41,12 @@ pub struct Service {
     pub service_type: String,
     pub command: String,
     pub working_dir: Option<String>,
-    pub health_check: Option<Health_check>,
+    pub health_check: Option<HealthCheck>,
     pub dependencies: Vec<String>
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Health_check {
+pub struct HealthCheck {
     pub type_entry: String,
     pub port: Option<i16>,
     pub http_target: String

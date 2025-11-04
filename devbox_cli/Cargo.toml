@@ -1,7 +1,10 @@
 [package]
-name = "devBox_cli"
+name = "devbox_cli"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+path = "src/lib.rs"
 
 [dependencies]
 # CLI Framework
@@ -47,5 +50,6 @@ dotenvy = "0.15"
 users = "0.11"       # User information
 
 [dev-dependencies]
+devbox_cli = { path = "." }
 tempfile = "3.8"     # Testing
 assert_cmd = "2.0"   # Command assertion

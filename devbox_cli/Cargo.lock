@@ -400,7 +400,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "devBox_cli"
+name = "devbox_cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -409,6 +409,7 @@ dependencies = [
  "color-eyre",
  "config",
  "console",
+ "devbox_cli",
  "dialoguer",
  "directories",
  "dotenvy",
