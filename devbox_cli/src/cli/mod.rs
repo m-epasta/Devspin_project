@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+use crate::ToolError;
+
 #[derive(Parser)]
 #[command(name = "devbox")]
 #[command(about = "Development environment manager")]
@@ -19,7 +21,7 @@ pub enum Commands {
     // /// Show project status
     // Status(status::StatusArgs),
     // /// Initialize a new project
-    // Init(init::InitArgs),
+    Init(init::InitArgs),
     // /// Show project logs
     // Logs(logs::LogsArgs),
     // /// Restart a project
@@ -27,6 +29,18 @@ pub enum Commands {
     // /// Manage project configuration
     // Config(config::ConfigArgs),
 }
+
+impl Cli {
+    pub async fn execute(&self) -> Result<(), ToolError> {
+        match &self.command {
+            Commands::Start(args) => args.handle().await,
+            // Commands::Stop(args) => args.execute().await,
+            // Commands::Status(args) => args.execute().await,
+            Commands::Init(args) => args.execute().await,  
+        }
+    }
+}
+
 
 pub mod start;
 pub mod stop;
