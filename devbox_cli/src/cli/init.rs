@@ -630,6 +630,74 @@ impl InitArgs {
     }
 
 
+    // Remove the SVG file from the svelte_template files array:
+    fn svelte_template(&self) -> Template {
+        Template {
+            name: "svelte".to_string(),
+            services: vec!["frontend".to_string()],
+            packages: vec!["nodejs@latest".to_string(), "npm@latest".to_string()],
+            files: vec![
+                TemplateFile {
+                    path: "frontend/package.json".to_string(),
+                    content: SVELTE_PACKAGE_JSON,
+                },
+                TemplateFile {
+                    path: "frontend/svelte.config.js".to_string(),
+                    content: SVELTE_CONFIG,
+                },
+                TemplateFile {
+                    path: "frontend/vite.config.ts".to_string(),
+                    content: SVELTE_VITE_CONFIG,
+                },
+                TemplateFile {
+                    path: "frontend/tsconfig.json".to_string(),
+                    content: SVELTE_TS_CONFIG,
+                },
+                TemplateFile {
+                    path: "frontend/tsconfig.node.json".to_string(),
+                    content: SVELTE_TS_CONFIG_NODE,
+                },
+                TemplateFile {
+                    path: "frontend/index.html".to_string(),
+                    content: SVELTE_APP_HTML,
+                },
+                // REMOVE THIS LINE: SVG file causing syntax errors
+                // TemplateFile {
+                //     path: "frontend/vite.svg".to_string(),
+                //     content: SVELTE_VITE_SVG,
+                // },
+                TemplateFile {
+                    path: "frontend/src/main.ts".to_string(),
+                    content: SVELTE_MAIN,
+                },
+                TemplateFile {
+                    path: "frontend/src/App.svelte".to_string(),
+                    content: SVELTE_APP_SVELTE,
+                },
+                TemplateFile {
+                    path: "frontend/src/app.css".to_string(),
+                    content: SVELTE_APP_CSS,
+                },
+                TemplateFile {
+                    path: "frontend/src/vite-env.d.ts".to_string(),
+                    content: SVELTE_VITE_ENV,
+                },
+            ],
+            service_configs: vec![ServiceConfig {
+                name: "frontend".to_string(),
+                service_type: "web".to_string(),
+                command: "cd frontend && npm run dev".to_string(),
+                working_dir: "./frontend".to_string(),
+                health_check: HealthCheck {
+                    type_entry: "http".to_string(),
+                    port: 5173,
+                    http_target: "http://localhost:5173".to_string(),
+                },
+                dependencies: vec![],
+            }],
+        }
+    }
+
 
     fn react_template(&self) -> Template {
         Template {
@@ -689,56 +757,7 @@ impl InitArgs {
         }
     }
 
-    fn svelte_template(&self) -> Template {
-        Template {
-            name: "svelte".to_string(),
-            services: vec!["frontend".to_string()],
-            packages: vec!["nodejs@latest".to_string(), "npm@latest".to_string()],
-            files: vec![
-                TemplateFile {
-                    path: "frontend/package.json".to_string(),
-                    content: SVELTE_PACKAGE_JSON,
-                },
-                TemplateFile {
-                    path: "frontend/svelte.config.js".to_string(),
-                    content: SVELTE_CONFIG,
-                },
-                TemplateFile {
-                    path: "frontend/vite.config.ts".to_string(),
-                    content: SVELTE_VITE_CONFIG,
-                },
-                TemplateFile {
-                    path: "frontend/tsconfig.json".to_string(),
-                    content: SVELTE_TS_CONFIG,
-                },
-                TemplateFile {
-                    path: "frontend/src/app.html".to_string(),
-                    content: SVELTE_APP_HTML,
-                },
-                TemplateFile {
-                    path: "frontend/src/main.ts".to_string(),
-                    content: SVELTE_MAIN,
-                },
-                TemplateFile {
-                    path: "frontend/src/app.css".to_string(),
-                    content: SVELTE_APP_CSS,
-                },
-            ],
-            service_configs: vec![ServiceConfig {
-                name: "frontend".to_string(),
-                service_type: "web".to_string(),
-                command: "cd frontend && npm run dev".to_string(),
-                working_dir: "./frontend".to_string(),
-                health_check: HealthCheck {
-                    type_entry: "http".to_string(),
-                    port: 5173,
-                    http_target: "http://localhost:5173".to_string(),
-                },
-                dependencies: vec![],
-            }],
-        }
-    }
-
+    
     fn node_template(&self) -> Template {
         Template {
             name: "node".to_string(),
@@ -1446,7 +1465,7 @@ createApp(App).mount('#app')"#;
 const VUE_APP: &str = r#"<template>
   <div id="app">
     <img alt="Vue logo" src="./assets/logo.png" width="125" height="125" />
-    <HelloWorld msg="Welcome to Your Vue.js + TypeScript App" />
+    <HelloWorld msg="Welcome to Your DevBox project!" />
   </div>
 </template>
 
@@ -1633,23 +1652,37 @@ const SVELTE_PACKAGE_JSON: &str = r#"{
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^2.0.0",
+    "@sveltejs/vite-plugin-svelte": "^2.5.3",
     "@tsconfig/svelte": "^5.0.0",
+    "@tsconfig/node18": "^18.0.0",
+    "@types/node": "^20.0.0",
     "svelte": "^4.0.0",
     "svelte-check": "^3.0.0",
     "tslib": "^2.4.1",
     "typescript": "^5.0.0",
-    "vite": "^5.0.0"
+    "vite": "^4.5.0"
   }
 }"#;
 
-const SVELTE_CONFIG: &str = r#"import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
 
-export default {
-  // Consult https://svelte.dev/docs#compile-time-svelte-preprocess
-  // for more information about preprocessors
-  preprocess: vitePreprocess(),
+const SVELTE_TS_CONFIG_NODE: &str = r#"{
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "include": [
+    "vite.config.*",
+    "vitest.config.*",
+    "cypress.config.*",
+    "nightwatch.conf.*",
+    "playwright.config.*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "types": ["node"]
+  }
 }"#;
+
+const SVELTE_VITE_ENV: &str = r#"/// <reference types="svelte" />
+/// <reference types="vite/client" />"#;
 
 const SVELTE_VITE_CONFIG: &str = r#"import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
@@ -1659,8 +1692,69 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true
+  },
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
   }
 })"#;
+
+const SVELTE_APP_SVELTE: &str = r#"<script lang="ts">
+  let count = 0;
+
+  function increment() {
+    count += 1;
+  }
+</script>
+
+<main>
+  <h1>Welcome to Svelte + Devbox!</h1>
+  <p>This is your new Svelte application.</p>
+  
+  <div class="card">
+    <button on:click={increment}>
+      Count is {count}
+    </button>
+  </div>
+  
+  <p>
+    Edit <code>src/App.svelte</code> to get started.
+  </p>
+</main>
+
+<style>
+  main {
+    text-align: center;
+    padding: 1em;
+    max-width: 240px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    color: #ff3e00;
+    text-transform: uppercase;
+    font-size: 4em;
+    font-weight: 100;
+  }
+
+  @media (min-width: 640px) {
+    main {
+      max-width: none;
+    }
+  }
+</style>"#;
+
+// And add the App.svelte file to the template files array:
+
+
+const SVELTE_CONFIG: &str = r#"import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
+export default {
+  // Consult https://svelte.dev/docs#compile-time-svelte-preprocess
+  // for more information about preprocessors
+  preprocess: vitePreprocess(),
+}"#;
+
 
 const SVELTE_TS_CONFIG: &str = r#"{
   "extends": "@tsconfig/svelte/tsconfig.json",
@@ -1686,21 +1780,20 @@ const SVELTE_TS_CONFIG: &str = r#"{
 const SVELTE_APP_HTML: &str = r#"<!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
-    <meta name="viewport" content="width=device-width" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Devbox Svelte App</title>
   </head>
-  <body data-sveltekit-preload-data="hover">
-    <div style="display: contents">%sveltekit.body%</div>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>"#;
 
-const SVELTE_MAIN: &str = r#"import { mount } from 'svelte'
+const SVELTE_MAIN: &str = r#"import './app.css'
 import App from './App.svelte'
-import './app.css'
 
-const app = mount(App, {
+const app = new App({
   target: document.getElementById('app')!,
 })
 
@@ -1735,19 +1828,6 @@ body {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-}"#;
-
-// Node.js API Templates
-const NODE_API_PACKAGE_JSON: &str = r#"{
-  "name": "api",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.0"
-  }
 }"#;
 
 const NODE_API_SERVER: &str = r#"const express = require('express');
@@ -1991,6 +2071,18 @@ const FRONTEND_SERVICE_CONFIG: &str = r#"  - name: "frontend"
       port: 5173
       http_target: "http://localhost:5173"
     dependencies: []"#;
+
+const NODE_API_PACKAGE_JSON: &str = r#"{
+  "name": "api",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}"#;
 
 const NODE_API_SERVICE_CONFIG: &str = r#"  - name: "api"
     service_type: "api"
