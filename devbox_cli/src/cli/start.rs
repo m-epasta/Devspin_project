@@ -38,8 +38,8 @@ pub struct StartArgs {
 }
 
 impl StartArgs {
-    pub async fn handle(&self) -> Result<()> {
-        println!("🚀 Starting project: {}", self.name);
+    pub async fn execute(&self) -> Result<()> {
+        println!("Starting project: {}", self.name);
 
         self.validate_args()?;
 
@@ -96,7 +96,7 @@ impl StartArgs {
     }
 
     pub fn dry_run(&self, project: &ProjectConfig) -> Result<()> {
-        println!("🔍 DRY RUN - Would start project: {}", project.name);
+        println!("DRY RUN - Would start project: {}", project.name);
 
         if self.verbose {
             println!("   CONFIGURATION DETAILS:");
@@ -243,7 +243,7 @@ impl StartArgs {
         let env_vars = project.environment.clone().unwrap_or_default();
         
         if let Some(services) = &project.services {
-            println!("🛠️ Starting services...");
+            println!("Starting services...");
 
             let sorted_services = self.sort_services_by_dependencies(services);
             
@@ -336,7 +336,7 @@ impl StartArgs {
     async fn wait_for_dependencies(&self, service: &Service, process_state: &ProcessState, project_name: &str) -> Result<()> {
         for dep_name in &service.dependencies {
             if !process_state.is_service_running(project_name, dep_name) {
-                println!("⏳ Waiting for dependency: {} -> {}", service.name, dep_name);
+                println!("Waiting for dependency: {} -> {}", service.name, dep_name);
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
         }

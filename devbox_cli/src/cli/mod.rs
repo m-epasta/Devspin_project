@@ -10,7 +10,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Start a development project
     Start(start::StartArgs),
@@ -33,10 +33,12 @@ pub enum Commands {
 impl Cli {
     pub async fn execute(&self) -> Result<(), ToolError> {
         match &self.command {
-            Commands::Start(args) => args.handle().await,
-            // Commands::Stop(args) => args.execute().await,
-            // Commands::Status(args) => args.execute().await,
-            Commands::Init(args) => args.execute().await,  
+            Commands::Start(args) => {
+                args.execute().await
+            }
+            Commands::Init(args) => {
+                args.execute().await
+            }
         }
     }
 }

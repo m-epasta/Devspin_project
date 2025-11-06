@@ -1,13 +1,12 @@
-use devbox_cli::cli::{Cli, Commands};
 use clap::Parser;
+use devbox_cli::cli::Cli;
+use devbox_cli::error::ToolError;
 
 #[tokio::main]
-async fn main() -> devbox_cli::error::Result<()> {
+async fn main() -> Result<(), ToolError> {
+    // Initialize logging
     env_logger::init();
-    let _cli = Cli::parse();
     
-    // match cli.command {
-    //     Commands::Start(args) => args.handle().await?,
-    // } 
-    Ok(())
+    let cli = Cli::parse();
+    cli.execute().await
 }
