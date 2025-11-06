@@ -699,63 +699,76 @@ impl InitArgs {
     }
 
 
-    fn react_template(&self) -> Template {
-        Template {
-            name: "react".to_string(),
-            services: vec!["frontend".to_string()],
-            packages: vec!["nodejs@latest".to_string(), "npm@latest".to_string()],
-            files: vec![
-                TemplateFile {
-                    path: "frontend/package.json".to_string(),
-                    content: REACT_PACKAGE_JSON,
-                },
-                TemplateFile {
-                    path: "frontend/vite.config.ts".to_string(),
-                    content: REACT_VITE_CONFIG,
-                },
-                TemplateFile {
-                    path: "frontend/tsconfig.json".to_string(),
-                    content: REACT_TS_CONFIG,
-                },
-                TemplateFile {
-                    path: "frontend/src/main.tsx".to_string(),
-                    content: REACT_MAIN,
-                },
-                TemplateFile {
-                    path: "frontend/src/App.tsx".to_string(),
-                    content: REACT_APP,
-                },
-                TemplateFile {
-                    path: "frontend/src/vite-env.d.ts".to_string(),
-                    content: REACT_VITE_ENV,
-                },
-                TemplateFile {
-                    path: "frontend/src/index.css".to_string(),
-                    content: REACT_INDEX_CSS,
-                },
-                TemplateFile {
-                    path: "frontend/src/App.css".to_string(),
-                    content: REACT_APP_CSS,
-                },
-                TemplateFile {
-                    path: "frontend/index.html".to_string(),
-                    content: REACT_HTML,
-                },
-            ],
-            service_configs: vec![ServiceConfig {
-                name: "frontend".to_string(),
-                service_type: "web".to_string(),
-                command: "cd frontend && npm run dev".to_string(),
-                working_dir: "./frontend".to_string(),
-                health_check: HealthCheck {
-                    type_entry: "http".to_string(),
-                    port: 5173,
-                    http_target: "http://localhost:5173".to_string(),
-                },
-                dependencies: vec![],
-            }],
-        }
-    }
+  fn react_template(&self) -> Template {
+      Template {
+          name: "react".to_string(),
+          services: vec!["frontend".to_string()],
+          packages: vec!["nodejs@latest".to_string(), "npm@latest".to_string()],
+          files: vec![
+              TemplateFile {
+                  path: "frontend/package.json".to_string(),
+                  content: REACT_PACKAGE_JSON,
+              },
+              TemplateFile {
+                  path: "frontend/vite.config.ts".to_string(),
+                  content: REACT_VITE_CONFIG,
+              },
+              TemplateFile {
+                  path: "frontend/tsconfig.json".to_string(),
+                  content: REACT_TS_CONFIG,
+              },
+              TemplateFile {
+                  path: "frontend/tsconfig.node.json".to_string(), // ADD THIS
+                  content: REACT_TS_CONFIG_NODE,
+              },
+              TemplateFile {
+                  path: "frontend/index.html".to_string(),
+                  content: REACT_HTML,
+              },
+              TemplateFile {
+                  path: "frontend/src/main.tsx".to_string(),
+                  content: REACT_MAIN,
+              },
+              TemplateFile {
+                  path: "frontend/src/App.tsx".to_string(),
+                  content: REACT_APP,
+              },
+              TemplateFile {
+                  path: "frontend/src/vite-env.d.ts".to_string(),
+                  content: REACT_VITE_ENV,
+              },
+              TemplateFile {
+                  path: "frontend/src/index.css".to_string(),
+                  content: REACT_INDEX_CSS,
+              },
+              TemplateFile {
+                  path: "frontend/src/App.css".to_string(),
+                  content: REACT_APP_CSS,
+              },
+              TemplateFile {
+                  path: "frontend/src/assets/react.svg".to_string(), // ADD THIS
+                  content: REACT_SVG,
+              },
+              TemplateFile {
+                  path: "frontend/public/vite.svg".to_string(), // ADD THIS
+                  content: VITE_SVG,
+              },
+          ],
+          service_configs: vec![ServiceConfig {
+              name: "frontend".to_string(),
+              service_type: "web".to_string(),
+              command: "cd frontend && npm run dev".to_string(),
+              working_dir: "./frontend".to_string(),
+              health_check: HealthCheck {
+                  type_entry: "http".to_string(),
+                  port: 5173,
+                  http_target: "http://localhost:5173".to_string(),
+              },
+              dependencies: vec![],
+          }],
+      }
+  }
+
 
     
     fn node_template(&self) -> Template {
@@ -1172,13 +1185,32 @@ const REACT_PACKAGE_JSON: &str = r#"{
 const REACT_VITE_CONFIG: &str = r#"import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     host: true
+  },
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
   }
 })"#;
+
+const REACT_TS_CONFIG_NODE: &str = r#"{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+  "include": ["vite.config.ts"]
+}"#;
+
 
 const REACT_TS_CONFIG: &str = r#"{
   "compilerOptions": {
@@ -1212,6 +1244,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )"#;
+
+const REACT_SVG: &str = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI0IiBmaWxsPSIjNjFkYWZiIi8+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNjFkYWZiIj4KICAgIDxlbGxpcHNlIGN4PSIxNiIgY3k9IjE2IiByeD0iMTAiIHJ5PSI0Ii8+CiAgICA8ZWxsaXBzZSBjeD0iMTYiIGN5PSIxNiIgcng9IjEwIiByeT0iNCIgdHJhbnNmb3JtPSJyb3RhdGUoNjAgMTYgMTYpIi8+CiAgICA8ZWxsaXBzZSBjeD0iMTYiIGN5PSIxNiIgcng9IjEwIiByeT0iNCIgdHJhbnNmb3JtPSJyb3RhdGUoMTIwIDE2IDE2KSIvPgogIDwvZz4KPC9zdmc+Cg==";
+
+const VITE_SVG: &str = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNCIgZmlsbD0iIzY0NmNmZiIvPgogIDxwYXRoIGQ9Ik0xNiA4bDggMTRIOHoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=";
+
+
+
 
 const REACT_APP: &str = r#"import { useState } from 'react'
 import reactLogo from './assets/react.svg'
@@ -1375,6 +1414,7 @@ const REACT_HTML: &str = r#"<!doctype html>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>"#;
+
 
 // Vue Templates
 const VUE_PACKAGE_JSON: &str = r#"{
