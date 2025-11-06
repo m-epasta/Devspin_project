@@ -1890,6 +1890,7 @@ const RUST_MAIN: &str = r#"use axum::{
 use chrono::Utc;
 use serde::Serialize;
 use std::net::SocketAddr;
+use tokio::net::TcpListener;
 
 #[derive(Serialize)]
 struct HealthResponse {
@@ -1922,13 +1923,13 @@ async fn main() {
         .route("/health", get(health));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+    let listener = TcpListener::bind(addr).await.unwrap();
+    
     println!("API server running on {}", addr);
 
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    axum::serve(listener, app).await.unwrap();
 }"#;
+
 
 // Go API Templates
 const GO_MOD: &str = r#"module api
