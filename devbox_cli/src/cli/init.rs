@@ -2276,15 +2276,6 @@ const NODE_API_SERVICE_CONFIG: &str = r#"  - name: "api"
       http_target: "http://localhost:3001/health"
     dependencies: []"#;
 
-const PYTHON_API_SERVICE_CONFIG: &str = r#"  - name: "api"
-    service_type: "api"
-    command: "cd api && python main.py"
-    working_dir: "./api"
-    health_check:
-      type_entry: "http"
-      port: 8000
-      http_target: "http://localhost:8000/health"
-    dependencies: []"#;
 
 const RUST_API_SERVICE_CONFIG: &str = r#"  - name: "api"
     service_type: "api"
