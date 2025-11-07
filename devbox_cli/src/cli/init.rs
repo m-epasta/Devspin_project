@@ -97,7 +97,7 @@ impl InitArgs {
             
             // Handle Node.js dependencies
             if Path::new(&format!("{}/package.json", service_dir)).exists() {
-                println!("   Installing dependencies for {}...", service);
+                println!("   Installing Node.js dependencies for {}...", service);
                 
                 if Command::new("npm").arg("--version").output().is_ok() {
                     let status = Command::new("npm")
@@ -140,36 +140,31 @@ impl InitArgs {
                     }
                 }
                 
-                // Run the setup script
-                if Command::new("python").arg("--version").output().is_ok() {
-                    let status = if cfg!(target_os = "windows") {
-                        Command::new("cmd")
-                            .args(["/C", "setup_venv.bat"])
-                            .current_dir(&service_dir)
-                            .status()
-                    } else {
-                        Command::new("sh")
-                            .arg("./setup_venv.sh")
-                            .current_dir(&service_dir)
-                            .status()
-                    };
-                    
-                    match status {
-                        Ok(exit_status) if exit_status.success() => {
-                            println!("   ✅ Python virtual environment created and dependencies installed for {}", service);
-                        }
-                        Ok(exit_status) => {
-                            println!("   ⚠️  Failed to setup Python environment for {} (exit code: {})", service, exit_status);
-                            println!("   💡 Run 'cd {} && ./setup_venv.sh' manually", service_dir);
-                        }
-                        Err(e) => {
-                            println!("   ⚠️  Could not setup Python environment for {}: {}", service, e);
-                            println!("   💡 Make sure Python is installed and run 'cd {} && ./setup_venv.sh'", service_dir);
-                        }
-                    }
+                // Just run the setup script - it will handle Python version internally
+                let status = if cfg!(target_os = "windows") {
+                    Command::new("cmd")
+                        .args(["/C", "setup_venv.bat"])
+                        .current_dir(&service_dir)
+                        .status()
                 } else {
-                    println!("   ⚠️  Python not available for {}", service);
-                    println!("   💡 Install Python and run 'cd {} && ./setup_venv.sh'", service_dir);
+                    Command::new("sh")
+                        .arg("./setup_venv.sh")
+                        .current_dir(&service_dir)
+                        .status()
+                };
+                
+                match status {
+                    Ok(exit_status) if exit_status.success() => {
+                        println!("   ✅ Python virtual environment created and dependencies installed for {}", service);
+                    }
+                    Ok(exit_status) => {
+                        println!("   ⚠️  Failed to setup Python environment for {} (exit code: {})", service, exit_status);
+                        println!("   💡 Run 'cd {} && ./setup_venv.sh' manually", service_dir);
+                    }
+                    Err(e) => {
+                        println!("   ⚠️  Could not setup Python environment for {}: {}", service, e);
+                        println!("   💡 Make sure Python is installed and run 'cd {} && ./setup_venv.sh'", service_dir);
+                    }
                 }
             }
         }
@@ -882,7 +877,7 @@ impl InitArgs {
             service_configs: vec![ServiceConfig {
                 name: "api".to_string(),
                 service_type: "api".to_string(),
-                command: "cd api && ./setup_venv.sh && source venv/bin/activate && python main.py".to_string(),
+                command: "cd api && ./setup_venv.sh && source venv/bin/activate && python3 main.py".to_string(), // Use python3 here
                 working_dir: "./api".to_string(),
                 health_check: HealthCheck {
                     type_entry: "http".to_string(),
@@ -893,6 +888,7 @@ impl InitArgs {
             }],
         }
     }
+
 
     fn rust_template(&self) -> Template {
         Template {
@@ -1962,7 +1958,7 @@ set -e
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Creating Python virtual environment..."
-    python -m venv venv
+    python3 -m venv venv
 fi
 
 # Activate virtual environment and install dependencies
@@ -1975,7 +1971,6 @@ echo "✅ Python virtual environment setup complete!"
 echo "To activate manually, run: source venv/bin/activate"
 "#;
 
-// Also create a Windows batch version
 const PYTHON_VENV_SETUP_WINDOWS: &str = r#"@echo off
 setlocal enabledelayedexpansion
 
