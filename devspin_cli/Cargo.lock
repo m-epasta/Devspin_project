@@ -419,6 +419,7 @@ dependencies = [
  "indicatif",
  "log",
  "nix",
+ "once_cell",
  "port_check",
  "reqwest",
  "serde",

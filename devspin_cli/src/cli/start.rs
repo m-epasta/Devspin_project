@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::process::Command;  
 
 use clap::Args;
 use crate::error::{Result, ToolError};
 use crate::configs::yaml_parser::{ProjectConfig, Service};
-use crate::process::ProcessState;
+use crate::process::global::get_global_state;
+use crate::process::state::ProcessState;  // ADD THIS IMPORT
 use log::debug; 
 
 #[derive(Debug, Args, Clone)]
@@ -43,15 +43,13 @@ impl StartArgs {
 
         self.validate_args()?;
 
-        let default_path = format!("{}/devbox.yaml", self.name);
+        let default_path = format!("{}/devspin.yaml", self.name);
         if !std::path::Path::new(&default_path).exists() {
             return Err(ToolError::ConfigError(format!(
                 "Project '{}' not found at: {}", self.name, default_path
             )))
         }
         let project = self.load_project(&default_path).await?;
-
-        let mut process_state = ProcessState::new();
 
         if self.dry_run {
             return self.dry_run(&project);
@@ -68,7 +66,7 @@ impl StartArgs {
 
         if self.background {
             println!("Running in background mode");
-            return self.start_in_background(project, process_state).await;
+            return self.start_in_background(project).await;
         }
 
         if let Some(only_services) = &self.only {
@@ -79,6 +77,8 @@ impl StartArgs {
             println!("⏭Skipping: {}", skip_services.join(", "));
         }
 
+        // For foreground mode, use global state directly
+        let mut process_state = get_global_state();
         self.start_services(&project, &mut process_state).await
     }
 
@@ -100,7 +100,7 @@ impl StartArgs {
 
         if self.verbose {
             println!("   CONFIGURATION DETAILS:");
-            println!("   Config path: ./{}/devbox.yaml", self.name);
+            println!("   Config path: ./{}/devspin.yaml", self.name);
             println!("   Project: {}", project.name);
             println!("   Description: {:?}", project.description);
             
@@ -219,23 +219,23 @@ impl StartArgs {
         true
     }
 
-    async fn spawn_service_command(&self, service: &Service, env_vars: &HashMap<String, String>) -> Result<std::process::Child> {
-        let mut command = Command::new("sh");
+    async fn spawn_service_command(
+        &self, 
+        service: &Service, 
+        env_vars: &HashMap<String, String>,
+        working_dir: &str
+    ) -> Result<std::process::Child> {
+        let mut command = std::process::Command::new("sh");
         command.arg("-c").arg(&service.command);
         
-        if let Some(working_dir) = &service.working_dir {
-            command.current_dir(working_dir);
-            debug!("Working directory: {}", working_dir);
-        }
+        // Use the resolved working directory
+        command.current_dir(working_dir);
         
         for (key, value) in env_vars {
             command.env(key, value);
-            debug!("Env: {}={}", key, value);
         }
         
-        let child = command.spawn()
-            .map_err(|e| ToolError::ProcessError(format!("Failed to start service {}: {}", service.name, e)))?;
-        
+        let child = command.spawn()?;
         Ok(child)
     }
 
@@ -249,23 +249,29 @@ impl StartArgs {
             
             for service in sorted_services {  
                 if self.should_start_service(service) {
-                    self.wait_for_dependencies(service, process_state, &project.name).await?;
+                    self.wait_for_dependencies(service, &*process_state, &project.name).await?;
 
                     println!("Starting service: {}", service.name);
                     
-                    let mut child = self.spawn_service_command(service, &env_vars).await?;
-
-                    let _ = process_state.add_process(&mut child, &service.name, &project.name, &service.command);
-
+                    // RESOLVE the working directory relative to project base
+                    let working_dir = if let Some(service_dir) = &service.working_dir {
+                        project.resolve_path(service_dir).to_string_lossy().to_string()
+                    } else {
+                        // Default to project base directory
+                        project.base_path.as_ref()
+                            .map(|p| p.to_string_lossy().to_string())
+                            .unwrap_or_else(|| ".".to_string())
+                    };
+                    
+                    let child = self.spawn_service_command(service, &env_vars, &working_dir).await?;
                     let pid = child.id();
-                    println!("Started service: {} (PID: {})", service.name, pid);
+
+                    process_state.add_process(child, &service.name, &project.name, &service.command)?;
+                    
+                    println!("Started service: {} (PID: {}) in directory: {}", service.name, pid, working_dir);
 
                     if let Some(health_check) = &service.health_check {
                         self.wait_for_health_check(service, health_check).await?;
-                    }
-
-                    if !self.background {
-                        self.spawn_process_monitor(child, service.name.clone()).await?;
                     }
                 }
             }
@@ -277,25 +283,62 @@ impl StartArgs {
         Ok(())
     }
 
-    async fn start_in_background(&self, project: ProjectConfig, mut process_state: ProcessState) -> Result<()> {
-        let args_clone = self.clone();
-        let project_name = project.name.clone();
-        let project_for_background = project.clone();
 
-        
-        tokio::spawn(async move {
-            println!("Starting background services for: {}", project_name);
+    async fn start_in_background(&self, project: ProjectConfig) -> Result<()> {
+        println!("Starting project '{}' in background mode...", project.name);
+
+        // Pre-collect all the services we need to start
+        let services_to_start: Vec<Service> = if let Some(services) = &project.services {
+            services.iter()
+                .filter(|service| self.should_start_service(service))
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        let env_vars = project.environment.clone().unwrap_or_default();
+        let project_name = project.name.clone();
+
+        // Start each service and track it immediately
+        for service in services_to_start {
+            println!("Starting background service: {}", service.name);
             
-            if let Err(e) = args_clone.start_services(&project_for_background, &mut process_state).await {
-                eprintln!("Background service error: {}", e);
+            // RESOLVE working directory for background mode too
+            let working_dir = if let Some(service_dir) = &service.working_dir {
+                project.resolve_path(service_dir).to_string_lossy().to_string()
             } else {
-                println!("Background services running for: {}", project_name);
+                project.base_path.as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| ".".to_string())
+            };
+            
+            // FIX: Pass all 3 arguments to spawn_service_command
+            match self.spawn_service_command(&service, &env_vars, &working_dir).await {
+                Ok(child) => {
+                    let pid = child.id();
+                    
+                    // Store in global state - quick operation, no await points
+                    let mut process_state = get_global_state();
+                    if let Err(e) = process_state.add_process(child, &service.name, &project_name, &service.command) {
+                        eprintln!("❌ Failed to track service {}: {}", service.name, e);
+                    } else {
+                        println!("✅ Started background service: {} (PID: {}) in directory: {}", service.name, pid, working_dir);
+                    }
+                    // process_state drops here, releasing the mutex
+                }
+                Err(e) => {
+                    eprintln!("❌ Failed to start service {}: {}", service.name, e);
+                }
             }
-        });
-        
-        println!("Project '{}' started in background mode", project.name);
-        println!("Use 'devbox status' to see running services");
-        println!("Use 'devbox stop {}' to stop services", project.name);
+            
+            // Small delay between service starts
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        }
+
+        println!("Project '{}' successfully started in background mode", project_name);
+        println!("Check status: devspin status");
+        println!("Stop services: devspin stop {}", project_name);
         
         Ok(())
     }
@@ -373,22 +416,6 @@ impl StartArgs {
             println!("   Port check: {}", port); 
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
-        Ok(())
-    }
-
-    async fn spawn_process_monitor(&self, mut child: std::process::Child, service_name: String) -> Result<()> {
-        let pid = child.id();
-        tokio::spawn(async move {
-            match child.wait() {
-                Ok(exit_status) => {
-                    let status = if exit_status.success() { "successfully" } else { "with error" };
-                    println!("Service {} (PID: {}) exited {}", service_name, pid, status);
-                }
-                Err(e) => {
-                    eprintln!("Error waiting for service {} (PID: {}): {}", service_name, pid, e);
-                }
-            }
-        });
         Ok(())
     }
 

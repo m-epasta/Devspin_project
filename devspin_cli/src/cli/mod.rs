@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use crate::ToolError;
 
 #[derive(Parser)]
-#[command(name = "devbox")]
+#[command(name = "devspin")]
 #[command(about = "Development environment manager")]
 pub struct Cli {
     #[command(subcommand)]

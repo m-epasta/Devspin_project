@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs;
-use crate:: error::ToolError;
-use log::{info, debug};
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProjectConfig {
@@ -11,7 +9,10 @@ pub struct ProjectConfig {
     pub commands: Commands,
     pub services: Option<Vec<Service>>,
     pub environment: Option<HashMap<String, String>>,
-    pub hooks: Option<Hooks>
+    pub hooks: Option<Hooks>,
+
+    #[serde(skip)]  // Don't serialize/deserialize this from YAML
+    pub base_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -61,14 +62,27 @@ pub struct Hooks {
 }
 
 impl ProjectConfig {
-    pub fn from_file(path: &str) -> Result<Self, ToolError> {
-        let content = fs::read_to_string(path)?;
-        info!("Loading project from {}", path);
-
-        debug!("readed file");
-        let config: ProjectConfig = serde_yaml::from_str(&content)
-            .map_err(|e| ToolError::ParseError(e.to_string()))?;
-        info!("successfully loaded project {}", config.name);
+    pub fn from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {  // FIXED: Add error type
+        let content = std::fs::read_to_string(path)?;
+        let mut config: ProjectConfig = serde_yaml::from_str(&content)?;
+        
+        // Store the config file directory as base path
+        config.base_path = Some(
+            std::path::Path::new(path)
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| std::path::Path::new(".").to_path_buf())
+        );
+            
         Ok(config)
+    }
+    
+    pub fn resolve_path(&self, relative_path: &str) -> PathBuf {
+        if let Some(base_path) = &self.base_path {
+            base_path.join(relative_path)
+        } else {
+            // Fallback if base_path is not set (shouldn't happen with from_file)
+            PathBuf::from(relative_path)
+        }
     }
 }

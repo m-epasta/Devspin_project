@@ -23,7 +23,16 @@ pub enum ToolError {
     
     #[error("Config validation failed: {0}")]
     ValidationError(String),
+        
+    #[error("Generic error: {0}")]
+    GenericError(String),
 
+}
+
+impl From<Box<dyn std::error::Error>> for ToolError {
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        ToolError::GenericError(err.to_string())
+    }
 }
 
 pub type Result<T> = std::result::Result<T, ToolError>;

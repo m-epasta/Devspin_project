@@ -3,7 +3,6 @@ use std::io::{self, Write};
 use crate::error::Result;
 use std::process::Command;
 use std::path::Path;
-// TODO: test and refactor all the templates except nextjs
 // Template data structures
 #[derive(Debug, Clone)]
 struct TemplateFile {
@@ -58,9 +57,9 @@ pub struct InitArgs {
 
 impl InitArgs {
     pub async fn execute(&self) -> Result<()> {
-        println!("🚀 Initializing new Devbox project...");
+        println!("Initializing new Devspin project...");
 
-      if std::env::var("DEVBOX_DEBUG").is_ok() {
+      if std::env::var("DEVSPIN_DEBUG").is_ok() {
           self.list_available_templates();
       }
 
@@ -75,16 +74,16 @@ impl InitArgs {
         }
         
         self.create_project_structure(&project_name, &template, &services, with_docker).await?;
-        self.generate_devbox_yaml(&project_name, &template, &services, with_docker).await?;
+        self.generate_devspin_yaml(&project_name, &template, &services, with_docker).await?;
         self.install_dependencies(&project_name, &services).await?;
         
         if with_docker {
             self.generate_docker_files(&project_name, &template).await?;
         }
         
-        println!("✅ Successfully created project: {}", project_name);
-        println!("📁 Project location: ./{}", project_name);
-        println!("🚀 Get started with: cd {} && devbox start", project_name);
+        println!("Successfully created project: {}", project_name);
+        println!("Project location: ./{}", project_name);
+        println!("Get started with: cd {} && devspin start", project_name);
         
         Ok(())
     }
@@ -179,10 +178,10 @@ impl InitArgs {
         }
         
         if self.yes {
-            return Ok("my-devbox-project".to_string());
+            return Ok("my-devspin-project".to_string());
         }
         
-        print!("📝 Project name: ");
+        print!("Project name: ");
         io::stdout().flush()?;
         
         let mut input = String::new();
@@ -190,7 +189,7 @@ impl InitArgs {
         
         let name = input.trim();
         if name.is_empty() {
-            return Ok("my-devbox-project".to_string());
+            return Ok("my-devspin-project".to_string());
         }
         
         self.validate_project_name(name)
@@ -198,7 +197,7 @@ impl InitArgs {
 
     fn validate_project_name(&self, name: &str) -> Result<String> {
         if name.is_empty() {
-            return Ok("my-devbox-project".to_string());
+            return Ok("my-devspin-project".to_string());
         }
         
         if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '-' && c != '_') {
@@ -229,18 +228,18 @@ impl InitArgs {
                 "go" | "gin" => "go",
                 "fullstack" | "microservices" | "custom" => template.as_str(),
                 other => {
-                    eprintln!("❌ Unknown template: {}. Using default (nextjs)", other);
-                    "nextjs"
+                    eprintln!("Unknown template: {}. Using default (custom)", other);
+                    "custom"
                 }
             };
             return Ok(normalized.to_string());
         }
 
         if self.yes {
-            return Ok("nextjs".to_string());
+            return Ok("custom".to_string());
         }
         
-        println!("\n📋 Select project template:");
+        println!("\nSelect project template:");
         println!("1. Next.js (Modern React fullstack)");
         println!("2. React (Vite + TypeScript)");
         println!("3. Vue (Vite + TypeScript)");
@@ -288,6 +287,7 @@ impl InitArgs {
                 "go" => Ok(vec!["api".to_string()]),
                 "api" => Ok(vec!["api".to_string()]),
                 "fullstack" => Ok(vec!["frontend".to_string(), "api".to_string(), "database".to_string()]),
+                "custom" => Ok(vec!["frontend".to_string(), "api".to_string()]), 
                 _ => Ok(vec!["frontend".to_string(), "api".to_string()]),
             };
         }
@@ -306,12 +306,12 @@ impl InitArgs {
             "fullstack" => Ok(vec!["frontend".to_string(), "api".to_string(), "database".to_string()]),
             "microservices" => Ok(vec!["frontend".to_string(), "api".to_string(), "auth".to_string(), "database".to_string()]),
             "custom" => self.select_custom_services().await,
-            _ => Ok(vec!["frontend".to_string(), "api".to_string()]),
+            _ => self.select_custom_services().await,
         }
     }
 
     async fn select_custom_services(&self) -> Result<Vec<String>> {
-        println!("\n🛠️  Select services to include:");
+        println!("\nSelect services to include:");
         let services = ["frontend", "api", "database", "cache", "auth", "queue", "storage", "monitoring"];
         
         for (i, service) in services.iter().enumerate() {
@@ -348,7 +348,7 @@ impl InitArgs {
             return Ok(false);
         }
         
-        print!("🐳 Include Docker support? [y/N]: ");
+        print!("Include Docker support? [y/N]: ");
         io::stdout().flush()?;
         
         let mut input = String::new();
@@ -358,7 +358,7 @@ impl InitArgs {
     }
     
     async fn create_project_structure(&self, project_name: &str, template: &str, services: &[String], with_docker: bool) -> Result<()> {
-        println!("📁 Creating project structure...");
+        println!("Creating project structure...");
         
         std::fs::create_dir_all(project_name)?;
         
@@ -414,8 +414,8 @@ impl InitArgs {
         Ok(())
     }
 
-    async fn generate_devbox_yaml(&self, project_name: &str, template: &str, services: &[String], with_docker: bool) -> Result<()> {
-        println!("📄 Generating devbox.yaml...");
+    async fn generate_devspin_yaml(&self, project_name: &str, template: &str, services: &[String], with_docker: bool) -> Result<()> {
+        println!("📄 Generating devspin.yaml...");
         
         let mut yaml_content = format!(
             "name: \"{}\"\ndescription: \"{} project\"\n\n",
@@ -461,7 +461,7 @@ impl InitArgs {
         
         yaml_content.push_str("\nhooks:\n  pre_start: \"echo 'Setting up development environment'\"\n  post_start: \"echo 'All services are ready!'\"\n");
         
-        std::fs::write(format!("{}/devbox.yaml", project_name), yaml_content)?;
+        std::fs::write(format!("{}/devspin.yaml", project_name), yaml_content)?;
         Ok(())
     }
 
@@ -511,7 +511,7 @@ impl InitArgs {
     }
 
   pub fn list_available_templates(&self) {
-      println!("🎯 Available Devbox Templates:");
+      println!("🎯 Available Devspin Templates:");
       println!("{:-<50}", "");
       
       let templates = [
@@ -984,7 +984,7 @@ impl InitArgs {
                 ServiceConfig {
                     name: "database".to_string(),
                     service_type: "database".to_string(),
-                    command: "docker run -p 5432:5432 -e POSTGRES_PASSWORD=devbox postgres:15".to_string(),
+                    command: "docker run -p 5432:5432 -e POSTGRES_PASSWORD=devspin postgres:15".to_string(),
                     working_dir: "./database".to_string(),
                     health_check: HealthCheck {
                         type_entry: "port".to_string(),
@@ -1121,8 +1121,8 @@ body {
 const NEXTJS_LAYOUT: &str = r#"import './globals.css'
 
 export const metadata = {
-  title: 'Devbox Next.js App',
-  description: 'Generated by Devbox CLI',
+  title: 'Devspin Next.js App',
+  description: 'Generated by Devspin CLI',
 }
 
 export default function RootLayout({
@@ -1197,7 +1197,7 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="text-center">
         <h1 className="text-6xl font-bold text-gray-800 mb-4">
-          Welcome to Devbox
+          Welcome to Devspin
         </h1>
         <p className="text-xl text-gray-600 mb-8">
           Your Next.js app is running successfully!
@@ -1466,7 +1466,7 @@ const REACT_HTML: &str = r#"<!doctype html>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Devbox React App</title>
+    <title>Devspin React App</title>
   </head>
   <body>
     <div id="root"></div>
@@ -1564,7 +1564,7 @@ createApp(App).mount('#app')"#;
 const VUE_APP: &str = r#"<template>
   <div id="app">
     <img alt="Vue logo" src="./assets/logo.png" width="125" height="125" />
-    <HelloWorld msg="Welcome to Your DevBox project!" />
+    <HelloWorld msg="Welcome to Your Devspin project!" />
   </div>
 </template>
 
@@ -1732,7 +1732,7 @@ const VUE_HTML: &str = r#"<!doctype html>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Devbox Vue App</title>
+    <title>Devspin Vue App</title>
   </head>
   <body>
     <div id="app"></div>
@@ -1808,7 +1808,7 @@ const SVELTE_APP_SVELTE: &str = r#"<script lang="ts">
 </script>
 
 <main>
-  <h1>Welcome to Svelte + Devbox!</h1>
+  <h1>Welcome to Svelte + Devspin!</h1>
   <p>This is your new Svelte application.</p>
   
   <div class="card">
@@ -1881,7 +1881,7 @@ const SVELTE_APP_HTML: &str = r#"<!DOCTYPE html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Devbox Svelte App</title>
+    <title>Devspin Svelte App</title>
   </head>
   <body>
     <div id="app"></div>
@@ -1936,7 +1936,7 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Hello from Devbox Node.js API!' });
+  res.json({ message: 'Hello from Devspin Node.js API!' });
 });
 
 app.get('/health', (req, res) => {
@@ -2002,7 +2002,7 @@ const PYTHON_API_SERVICE_CONFIG: &str = r#"  - name: "api"
 
 const PYTHON_MAIN: &str = r#"#!/usr/bin/env python3
 """
-DevBox Python API Server
+Devspin Python API Server
 This script automatically uses the virtual environment if available.
 """
 
@@ -2029,11 +2029,11 @@ except ImportError:
     print("Please run: ./setup_venv.sh (Linux/Mac) or setup_venv.bat (Windows)")
     sys.exit(1)
 
-app = FastAPI(title="DevBox Python API", version="1.0.0")
+app = FastAPI(title="Devspin Python API", version="1.0.0")
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from DevBox Python API!", "environment": "virtualenv"}
+    return {"message": "Hello from Devspin Python API!", "environment": "virtualenv"}
 
 @app.get("/health")
 async def health():
@@ -2041,8 +2041,8 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting DevBox Python API Server...")
-    print(f"📦 Using Python environment: {sys.prefix}")
+    print("Starting Devspin Python API Server...")
+    print(f"Using Python environment: {sys.prefix}")
     uvicorn.run(app, host="0.0.0.0", port=8000)"#;
 
 // Rust API Templates
@@ -2081,7 +2081,7 @@ struct MessageResponse {
 
 async fn root() -> Json<MessageResponse> {
     Json(MessageResponse {
-        message: "Hello from Devbox Rust API!".to_string(),
+        message: "Hello from Devspin Rust API!".to_string(),
     })
 }
 
@@ -2137,7 +2137,7 @@ func main() {
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, MessageResponse{
-			Message: "Hello from Devbox Go API!",
+			Message: "Hello from Devspin Go API!",
 		})
 	})
 
@@ -2167,10 +2167,10 @@ const BASIC_FRONTEND_HTML: &str = r#"<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Devbox Frontend</title>
+    <title>Devspin Frontend</title>
 </head>
 <body>
-    <h1>Welcome to Devbox!</h1>
+    <h1>Welcome to Devspin!</h1>
     <p>Your frontend service is running.</p>
 </body>
 </html>"#;
@@ -2188,7 +2188,7 @@ const BASIC_API_SERVER_JS: &str = r#"const http = require('http');
 
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ message: 'Hello from Devbox API!' }));
+  res.end(JSON.stringify({ message: 'Hello from Devspin API!' }));
 });
 
 const PORT = process.env.PORT || 3001;
@@ -2304,7 +2304,7 @@ const API_SERVICE_CONFIG: &str = r#"  - name: "api"
 
 const DATABASE_SERVICE_CONFIG: &str = r#"  - name: "database"
     service_type: "database"
-    command: "docker run -p 5432:5432 -e POSTGRES_PASSWORD=devbox postgres:15"
+    command: "docker run -p 5432:5432 -e POSTGRES_PASSWORD=Devspin postgres:15"
     working_dir: "./database"
     health_check:
       type_entry: "port"
@@ -2388,8 +2388,8 @@ services:
   database:
     image: postgres:15
     environment:
-      POSTGRES_PASSWORD: devbox
-      POSTGRES_DB: devbox
+      POSTGRES_PASSWORD: devspin
+      POSTGRES_DB: devspin
     ports:
       - "5432:5432"
     volumes:
@@ -2451,7 +2451,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_devbox_yaml_generation() {
+    async fn test_devspin_yaml_generation() {
         let temp_dir = TempDir::new().unwrap();
         std::env::set_current_dir(&temp_dir).unwrap();
 
@@ -2464,10 +2464,10 @@ mod tests {
 
         std::fs::create_dir_all("test-yaml/frontend").unwrap();
         
-        let result = args.generate_devbox_yaml("test-yaml", "nextjs", &["frontend".to_string()], false).await;
+        let result = args.generate_devspin_yaml("test-yaml", "nextjs", &["frontend".to_string()], false).await;
         assert!(result.is_ok());
 
-        let yaml_content = fs::read_to_string("test-yaml/devbox.yaml").unwrap();
+        let yaml_content = fs::read_to_string("test-yaml/devspin.yaml").unwrap();
         assert!(yaml_content.contains("name: \"test-yaml\""));
         assert!(yaml_content.contains("nextjs project"));
         assert!(yaml_content.contains("nodejs@latest"));
